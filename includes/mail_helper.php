@@ -144,5 +144,5 @@ function getSiteUrl() {
     $dir = dirname($_SERVER['PHP_SELF']);
     // Remove /api or similar subfolder
     $baseDir = str_replace('/api', '', $dir);
-    return $protocol . '://' . $host . $baseDir;
+return $protocol . '://' . $host . $baseDir;
 }
