@@ -82,10 +82,8 @@ function simpleMail($config, $to, $toName, $subject, $htmlBody, $textBody) {
             $mail->AltBody = $textBody;
             $mail->send();
         } else {
-            // Fallback to native mail() - requires SMTP configured in php.ini
-            if (empty($config['smtp_username'])) {
-                mail($to, $subject, $body, $headers);
-            }
+            // Fallback to native mail() - cPanel uses local MTA (Exim)
+            mail($to, $subject, $body, $headers);
         }
     } catch (Exception $e) {
         error_log("Mail failed: " . $e->getMessage());
