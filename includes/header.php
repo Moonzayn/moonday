@@ -74,6 +74,9 @@ $overdueBadge = $overdueCount->fetchColumn();
                 <a href="profile.php" class="nav-item <?= $currentPage === 'profile' ? 'active' : '' ?>">
                     <span class="nav-icon">👤</span> Profil
                 </a>
+                <a href="email_settings.php" class="nav-item <?= $currentPage === 'email_settings' ? 'active' : '' ?>">
+                    <span class="nav-icon">📧</span> Email
+                </a>
                 <a href="logout.php" class="nav-item">
                     <span class="nav-icon">🚪</span> Keluar
                 </a>

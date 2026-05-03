@@ -231,8 +231,23 @@ function handleCreateTask(PDO $pdo, int $userId): void {
                 VALUES (?, ?, 'created', 'Tugas dibuat via AI Chat')
             ");
             $log->execute([$userId, $taskId]);
-        } catch (Throwable $e) {
-        }
+        } catch (Throwable $e) {}
+
+        // Send email notification
+        try {
+            require_once __DIR__ . '/includes/mail_helper.php';
+            $taskData = ['id' => $taskId, 'user_id' => $taskUserId, 'title' => $title, 'description' => $description, 'priority' => $priority, 'status' => $status, 'due_date' => $dueDate, 'category_name' => ''];
+            if ($categoryId) {
+                $catStmt2 = $pdo->prepare("SELECT name FROM categories WHERE id = ?");
+                $catStmt2->execute([$categoryId]);
+                $cat2 = $catStmt2->fetch();
+                if ($cat2) $taskData['category_name'] = $cat2['name'];
+            }
+            $stmt2 = $pdo->prepare("SELECT full_name FROM users WHERE id = ?");
+            $stmt2->execute([$taskUserId]);
+            $u2 = $stmt2->fetch();
+            sendTaskNotification($pdo, $taskData, $u2['full_name'] ?? 'User');
+        } catch (Throwable $e) {}
 
         $categoryLabel = '';
         if ($categoryId) {
@@ -335,8 +350,23 @@ function handleCreateMultipleTasks(PDO $pdo, int $userId): void {
                     VALUES (?, ?, 'created', 'Tugas dibuat via AI Chat')
                 ");
                 $log->execute([$userId, $taskId]);
-            } catch (Throwable $e) {
-            }
+            } catch (Throwable $e) {}
+
+            // Send email notification
+            try {
+                require_once __DIR__ . '/includes/mail_helper.php';
+                $taskData2 = ['id' => $taskId, 'user_id' => $taskUserId, 'title' => $title, 'description' => $description, 'priority' => $priority, 'status' => $status, 'due_date' => $dueDate, 'category_name' => ''];
+                if ($categoryId) {
+                    $cs2 = $pdo->prepare("SELECT name FROM categories WHERE id = ?");
+                    $cs2->execute([$categoryId]);
+                    $c2 = $cs2->fetch();
+                    if ($c2) $taskData2['category_name'] = $c2['name'];
+                }
+                $us2 = $pdo->prepare("SELECT full_name FROM users WHERE id = ?");
+                $us2->execute([$taskUserId]);
+                $un2 = $us2->fetch();
+                sendTaskNotification($pdo, $taskData2, $un2['full_name'] ?? 'User');
+            } catch (Throwable $e) {}
 
             $created[] = [
                 'id'       => $taskId,

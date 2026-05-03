@@ -74,9 +74,20 @@ if (empty($errors)) {
         try {
             $logStmt = $pdo->prepare("INSERT INTO activity_log (user_id, task_id, action, description) VALUES (?, ?, 'created', 'Membuat tugas baru')");
             $logStmt->execute([$userId, $taskId]);
-        } catch (Exception $e) {
-            // Ignore log errors
-        }
+        } catch (Exception $e) {}
+
+        // Send email notification
+        try {
+            require_once 'includes/mail_helper.php';
+            $taskData = ['id' => $taskId, 'user_id' => $userId, 'title' => $title, 'description' => $description, 'priority' => $priority, 'status' => $status, 'due_date' => $dueDate, 'category_name' => ''];
+            if ($categoryId) {
+                $catStmt = $pdo->prepare("SELECT name FROM categories WHERE id = ?");
+                $catStmt->execute([$categoryId]);
+                $cat = $catStmt->fetch();
+                if ($cat) $taskData['category_name'] = $cat['name'];
+            }
+            sendTaskNotification($pdo, $taskData, getUserName());
+        } catch (Exception $e) {}
 
         header('Location: tasks.php?msg=created');
         exit();

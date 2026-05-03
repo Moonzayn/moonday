@@ -11,7 +11,10 @@ $categories = $catStmt->fetchAll();
         <h1 class="page-title" id="pageTitle">📋 Semua Tugas</h1>
         <p class="page-subtitle" id="taskCount">Memuat...</p>
     </div>
-    <a href="add_task.php" class="btn btn-primary">➕ Tugas Baru</a>
+    <div style="display:flex;gap:8px;">
+        <button class="btn btn-outline" onclick="exportCSV()">📄 Export CSV</button>
+        <a href="add_task.php" class="btn btn-primary">➕ Tugas Baru</a>
+    </div>
 </div>
 
 <div id="alertContainer"></div>
@@ -217,6 +220,14 @@ function addNote(taskId) {
         }
     })
     .catch(() => { btn.disabled = false; input.disabled = false; showAlert('Gagal menambah catatan', 'danger'); });
+}
+
+function exportCSV() {
+    const params = new URLSearchParams();
+    if (state.status) params.set('status', state.status);
+    if (state.category) params.set('category', state.category);
+    if (state.sort) params.set('sort', state.sort);
+    window.location.href = basePath + '/export_csv.php?' + params.toString();
 }
 
 function showAlert(msg, type) {
