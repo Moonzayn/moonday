@@ -1,0 +1,8 @@
+.env
+*.log
+vendor/
+node_modules/
+composer.lock
+.DS_Store
+Thumbs.db
+config/config.local.php
