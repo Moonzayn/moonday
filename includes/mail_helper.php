@@ -96,6 +96,8 @@ function getEmailTemplate($title, $desc, $priority, $status, $category, $dueDate
     $priorityColors = ['Low' => '#10b981', 'Medium' => '#3b82f6', 'High' => '#f59e0b', 'Urgent' => '#ef4444'];
     $pColor = $priorityColors[$priority] ?? '#6b7280';
 
+    $descHtml = $desc ? '<p style="color:#64748b;margin:0 0 16px;font-size:14px;">' . htmlspecialchars($desc) . '</p>' : '';
+
     return <<<HTML
 <!DOCTYPE html>
 <html>
@@ -113,7 +115,7 @@ function getEmailTemplate($title, $desc, $priority, $status, $category, $dueDate
             
             <div style="background:#f8fafc;border-radius:8px;padding:20px;margin-bottom:20px;">
                 <h2 style="color:#1e293b;margin:0 0 12px;font-size:20px;">{$title}</h2>
-                {$desc ? '<p style="color:#64748b;margin:0 0 16px;font-size:14px;">' . htmlspecialchars($desc) . '</p>' : ''}
+                {$descHtml}
                 
                 <table cellpadding="4" cellspacing="0" style="font-size:14px;">
                     <tr><td style="color:#94a3b8;padding-right:12px;">Prioritas:</td><td style="color:{$pColor};font-weight:600;">{$priority}</td></tr>
