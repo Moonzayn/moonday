@@ -1,7 +1,7 @@
 <?php
 /**
- * Simple Email Helper
- * Send email notifications when tasks are created
+ * Simple Email Helper - SMTP Support Included
+ * Custom single-file SMTP client, no external library required.
  */
 
 function sendTaskNotification($pdo, $task, $creatorName) {
@@ -11,16 +11,10 @@ function sendTaskNotification($pdo, $task, $creatorName) {
         return false;
     }
 
-    // Get all users to notify
-    if ($config['notify_all']) {
-        $stmt = $pdo->prepare("SELECT id, full_name, email FROM users WHERE email IS NOT NULL AND email != ''");
-        $stmt->execute();
-        $users = $stmt->fetchAll();
-    } else {
-        $stmt = $pdo->prepare("SELECT id, full_name, email FROM users WHERE id = ? AND email IS NOT NULL AND email != ''");
-        $stmt->execute([$task['user_id']]);
-        $users = $stmt->fetchAll();
-    }
+    // Get users to notify
+    $stmt = $pdo->prepare("SELECT id, full_name, email FROM users WHERE email IS NOT NULL AND email != ''");
+    $stmt->execute();
+    $users = $stmt->fetchAll();
 
     if (empty($users)) return false;
 
@@ -35,114 +29,92 @@ function sendTaskNotification($pdo, $task, $creatorName) {
 
     foreach ($users as $user) {
         $subject = "[Moonday] Tugas Baru: {$title}";
-        
         $html = getEmailTemplate($title, $desc, $priority, $status, $category, $dueDate, $creatorName, $siteUrl);
-        $text = "Tugas baru dibuat oleh {$creatorName}\n\nJudul: {$title}\nDeskripsi: {$desc}\nPrioritas: {$priority}\nStatus: {$status}\nKategori: {$category}\nDeadline: {$dueDate}\n\nLihat di: {$siteUrl}/tasks.php";
+        $text = "Tugas baru dibuat oleh {$creatorName}\n\nJudul: {$title}\nLihat di: {$siteUrl}/tasks.php";
 
-        simpleMail($config, $user['email'], $user['full_name'], $subject, $html, $text);
+        sendSmtpMail($config, $user['email'], $user['full_name'], $subject, $html, $text);
     }
 
     return true;
 }
 
-function simpleMail($config, $to, $toName, $subject, $htmlBody, $textBody) {
+function sendSmtpMail($config, $to, $toName, $subject, $htmlBody, $textBody) {
     try {
-        $boundary = md5(uniqid(time()));
-        $headers = "From: {$config['from_name']} <{$config['from_email']}>\r\n";
-        $headers .= "Reply-To: {$config['from_email']}\r\n";
-        $headers .= "MIME-Version: 1.0\r\n";
-        $headers .= "Content-Type: multipart/alternative; boundary=\"{$boundary}\"\r\n";
-        $headers .= "X-Mailer: Moonday Task Manager\r\n";
+        $host = $config['smtp_host'];
+        $port = $config['smtp_port'];
+        $user = $config['smtp_username'];
+        $pass = $config['smtp_password'];
+        $from = $config['from_email'] ?: $user;
+        $fromName = $config['from_name'];
+        
+        // Connect
+        $ssl = ($port == 465) ? 'ssl://' : '';
+        $fp = fsockopen($ssl . $host, $port, $errno, $errstr, 30);
+        if (!$fp) throw new Exception("Connection failed: $errstr");
 
-        $body = "--{$boundary}\r\n";
-        $body .= "Content-Type: text/plain; charset=UTF-8\r\n";
-        $body .= "Content-Transfer-Encoding: quoted-printable\r\n\r\n";
-        $body .= quoted_printable_encode($textBody) . "\r\n\r\n";
-        $body .= "--{$boundary}\r\n";
-        $body .= "Content-Type: text/html; charset=UTF-8\r\n";
-        $body .= "Content-Transfer-Encoding: quoted-printable\r\n\r\n";
-        $body .= $htmlBody . "\r\n\r\n";
-        $body .= "--{$boundary}--";
+        $send = function($cmd) use ($fp) {
+            fwrite($fp, $cmd . "\r\n");
+            $reply = '';
+            while (substr($reply, 3, 1) != ' ') {
+                $line = fgets($fp, 515);
+                if($line === false) break;
+                $reply .= $line;
+            }
+            return trim($reply);
+        };
 
-        // Use PHPMailer if available, otherwise fallback to mail()
-        if (class_exists('PHPMailer\\PHPMailer\\PHPMailer')) {
-            $mail = new PHPMailer\PHPMailer\PHPMailer(true);
-            $mail->isSMTP();
-            $mail->Host       = $config['smtp_host'];
-            $mail->SMTPAuth   = true;
-            $mail->Username   = $config['smtp_username'];
-            $mail->Password   = $config['smtp_password'];
-            $mail->SMTPSecure = $config['smtp_secure'];
-            $mail->Port       = $config['smtp_port'];
-            $mail->setFrom($config['from_email'], $config['from_name']);
-            $mail->addAddress($to, $toName);
-            $mail->isHTML(true);
-            $mail->Subject = $subject;
-            $mail->Body    = $htmlBody;
-            $mail->AltBody = $textBody;
-            $mail->send();
-        } else {
-            // Fallback to native mail() - cPanel uses local MTA (Exim)
-            mail($to, $subject, $body, $headers);
+        $send(''); // Read greeting
+        $send("EHLO " . ($_SERVER['HTTP_HOST'] ?? 'localhost'));
+        
+        // Start TLS if port is not 465
+        if ($port != 465) {
+            $send('STARTTLS');
+            stream_socket_enable_crypto($fp, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
+            $send("EHLO " . ($_SERVER['HTTP_HOST'] ?? 'localhost'));
         }
+
+        $send('AUTH LOGIN');
+        $send(base64_encode($user));
+        $send(base64_encode($pass));
+
+        $send("MAIL FROM:<$from>");
+        $send("RCPT TO:<$to>");
+        $send('DATA');
+
+        $headers = "From: $fromName <$from>\r\n";
+        $headers .= "Reply-To: $from\r\n";
+        $headers .= "MIME-Version: 1.0\r\n";
+        $boundary = md5(uniqid(time()));
+        $headers .= "Content-Type: multipart/alternative; boundary=\"$boundary\"\r\n";
+
+        $msg = "This is a multi-part message in MIME format.\r\n\r\n";
+        $msg .= "--$boundary\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n" . $textBody . "\r\n\r\n";
+        $msg .= "--$boundary\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n" . $htmlBody . "\r\n\r\n";
+        $msg .= "--$boundary--\r\n.\r\n";
+
+        fwrite($fp, $msg);
+        $send('QUIT');
+        fclose($fp);
+
     } catch (Exception $e) {
-        error_log("Mail failed: " . $e->getMessage());
+        error_log("Moonday Mail Error: " . $e->getMessage());
     }
 }
 
 function getEmailTemplate($title, $desc, $priority, $status, $category, $dueDate, $creator, $siteUrl) {
-    $priorityColors = ['Low' => '#10b981', 'Medium' => '#3b82f6', 'High' => '#f59e0b', 'Urgent' => '#ef4444'];
-    $pColor = $priorityColors[$priority] ?? '#6b7280';
-
     $descHtml = $desc ? '<p style="color:#64748b;margin:0 0 16px;font-size:14px;">' . htmlspecialchars($desc) . '</p>' : '';
-
     return <<<HTML
-<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;">
-<tr><td style="padding:40px 20px;">
-    <div style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
-        <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:24px;text-align:center;">
-            <h1 style="color:#fff;margin:0;font-size:24px;">📋 Moonday</h1>
-            <p style="color:rgba(255,255,255,0.8);margin:8px 0 0;">Tugas Baru Dibuat</p>
-        </div>
-        <div style="padding:24px;">
-            <p style="color:#374151;font-size:16px;margin:0 0 16px;">Halo! Tugas baru telah dibuat oleh <strong>{$creator}</strong>.</p>
-            
-            <div style="background:#f8fafc;border-radius:8px;padding:20px;margin-bottom:20px;">
-                <h2 style="color:#1e293b;margin:0 0 12px;font-size:20px;">{$title}</h2>
-                {$descHtml}
-                
-                <table cellpadding="4" cellspacing="0" style="font-size:14px;">
-                    <tr><td style="color:#94a3b8;padding-right:12px;">Prioritas:</td><td style="color:{$pColor};font-weight:600;">{$priority}</td></tr>
-                    <tr><td style="color:#94a3b8;padding-right:12px;">Status:</td><td>{$status}</td></tr>
-                    <tr><td style="color:#94a3b8;padding-right:12px;">Kategori:</td><td>{$category}</td></tr>
-                    <tr><td style="color:#94a3b8;padding-right:12px;">Deadline:</td><td>{$dueDate}</td></tr>
-                </table>
-            </div>
-            
-            <div style="text-align:center;">
-                <a href="{$siteUrl}/tasks.php" style="display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:12px 32px;text-decoration:none;border-radius:8px;font-weight:600;">Lihat Tugas →</a>
-            </div>
-        </div>
-        <div style="background:#f8fafc;padding:16px;text-align:center;color:#94a3b8;font-size:12px;">
-            Moonday Task Manager &copy; 2026
-        </div>
-    </div>
-</td></tr>
-</table>
-</body>
-</html>
+<div style="font-family:sans-serif;background:#f4f4f4;padding:20px;border-radius:8px;">
+    <h2 style="color:#333;">$title</h2>
+    $descHtml
+    <p>Status: <b>$status</b> | Priority: <b>$priority</b></p>
+    <a href="$siteUrl/tasks.php" style="background:#007bff;color:#fff;padding:10px 20px;text-decoration:none;border-radius:5px;">Lihat Tugas</a>
+</div>
 HTML;
 }
 
 function getSiteUrl() {
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
     $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-    $dir = dirname($_SERVER['PHP_SELF']);
-    // Remove /api or similar subfolder
-    $baseDir = str_replace('/api', '', $dir);
-return $protocol . '://' . $host . $baseDir;
+    return $protocol . '://' . $host . dirname($_SERVER['PHP_SELF']);
 }
