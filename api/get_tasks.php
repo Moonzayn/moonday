@@ -82,10 +82,13 @@ try {
                 }
             }
 
+            $noteCount = !empty($task['notes_json']) ? count(json_decode($task['notes_json'], true)) : 0;
+            $notesVisibleClass = $noteCount > 0 ? '' : ' display-none';
+
             $html .= '<div class="task-item' . $cc . '" id="task-' . $tid . '">';
             $html .= '<a href="#" class="task-checkbox' . $ch . '" onclick="event.preventDefault();toggleTaskStatus(' . $tid . ',\'' . $ts . '\')"></a>';
             $html .= '<div class="task-content">';
-            $html .= '<div class="task-title">' . $title . '</div>';
+            $html .= '<a href="task_detail.php?id=' . $tid . '" class="task-title" style="text-decoration:none;color:inherit;cursor:pointer;">' . $title . '</a>';
             $html .= '<div style="font-size:12px;color:var(--gray-400);margin-bottom:4px;">oleh ' . $owner . '</div>';
 
             if ($task['description']) {
@@ -94,10 +97,11 @@ try {
                 $html .= '<p style="font-size:13px;color:var(--gray-500);margin:4px 0;">' . $desc . '</p>';
             }
 
-            if ($notesHtml !== '') {
-                $html .= '<div class="task-notes" id="notes-' . $tid . '">' . $notesHtml . '</div>';
+            if ($noteCount > 0) {
+                $html .= '<div style="margin-top:6px;"><button class="btn btn-ghost btn-sm" onclick="toggleNotes(' . $tid . ')" id="notesBtn-' . $tid . '">💬 <span id="notesCount-' . $tid . '">' . $noteCount . '</span> komentar</button></div>';
+                $html .= '<div class="task-notes hidden" id="notes-' . $tid . '">' . $notesHtml . '</div>';
             } else {
-                $html .= '<div class="task-notes" id="notes-' . $tid . '" style="display:none;"></div>';
+                $html .= '<div class="task-notes hidden" id="notes-' . $tid . '"></div>';
             }
 
             $html .= '<div class="note-input-row">';

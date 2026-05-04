@@ -64,6 +64,9 @@ $categories = $catStmt->fetchAll();
 .note-input { flex: 1; padding: 6px 12px; border: 1px solid var(--gray-200); border-radius: 6px; font-size: 13px; background: var(--bg-secondary); color: var(--text-primary); outline: none; transition: border-color 0.2s; }
 .note-input:focus { border-color: var(--primary); }
 .note-btn { padding: 4px 8px; min-width: auto; font-size: 16px; }
+.hidden { display: none !important; }
+.btn-sm { padding: 2px 8px; font-size: 12px; }
+.btn-ghost.active { background: var(--primary); color: #fff; }
 </style>
 <script>
 const state = {
@@ -169,6 +172,18 @@ function toggleTaskStatus(id, newStatus) {
             showAlert(data.error || 'Gagal update status', 'danger');
         }
     });
+}
+
+function toggleNotes(id) {
+    const notes = document.getElementById('notes-' + id);
+    const btn = document.getElementById('notesBtn-' + id);
+    if (notes.classList.contains('hidden')) {
+        notes.classList.remove('hidden');
+        if (btn) btn.classList.add('active');
+    } else {
+        notes.classList.add('hidden');
+        if (btn) btn.classList.remove('active');
+    }
 }
 
 function updateTaskStatus(id, newStatus) {
