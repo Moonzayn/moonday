@@ -1,5 +1,14 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) {
+    // Session never expires: 1 year (31536000 seconds)
+    ini_set('session.gc_maxlifetime', 31536000);
+    session_set_cookie_params([
+        'lifetime' => 31536000,
+        'path'     => '/',
+        'secure'   => isset($_SERVER['HTTPS']),
+        'httponly' => true,
+        'samesite' => 'Lax'
+    ]);
     session_start();
 }
 
