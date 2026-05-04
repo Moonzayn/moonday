@@ -31,4 +31,8 @@ try {
 
     $pdo->prepare("DELETE FROM tasks WHERE id = ?")->execute([$taskId]);
     echo json_encode(['success' => true]);
-} catch (Exception $e) { echo json_encode(['error' => $e->getMessage()]); }
+    $pdo = null;
+} catch (Exception $e) { 
+    echo json_encode(['error' => $e->getMessage()]); 
+    $pdo = null;
+}

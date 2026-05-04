@@ -148,8 +148,10 @@ try {
         'statusFilter' => $statusFilter, 'categoryFilter' => $categoryFilter,
         'searchQuery' => $searchQuery, 'sortBy' => $sortBy, 'specialFilter' => $specialFilter,
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    $pdo = null;
 } catch (Exception $e) {
     echo json_encode(['error' => $e->getMessage()]);
+    $pdo = null;
 }
 
 function timeAgoSafe($datetime) {

@@ -42,4 +42,8 @@ try {
     try { $pdo->prepare("INSERT INTO activity_log (user_id, task_id, action, description) VALUES (?,?,?,?)")->execute([$userId, $taskId, $newStatus === 'completed' ? 'completed' : 'updated', 'Mengubah status ke ' . $sl[$newStatus]]); } catch (Throwable $e) {}
 
     echo json_encode(['success' => true, 'message' => 'Status berhasil diubah ke ' . $sl[$newStatus]]);
-} catch (Exception $e) { echo json_encode(['error' => $e->getMessage()]); }
+    $pdo = null;
+} catch (Exception $e) { 
+    echo json_encode(['error' => $e->getMessage()]); 
+    $pdo = null;
+}

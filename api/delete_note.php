@@ -30,6 +30,8 @@ try {
 
     $pdo->prepare("DELETE FROM task_notes WHERE id = ?")->execute([$noteId]);
     echo json_encode(['success' => true, 'message' => 'Komentar berhasil dihapus']);
+    $pdo = null;
 } catch (PDOException $e) {
     echo json_encode(['error' => $e->getMessage()]);
+    $pdo = null;
 }

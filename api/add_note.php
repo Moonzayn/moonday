@@ -48,4 +48,8 @@ try {
             'created_at' => date('Y-m-d H:i:s'),
         ]
     ]);
-} catch (Exception $e) { echo json_encode(['error' => $e->getMessage()]); }
+    $pdo = null;
+} catch (Exception $e) { 
+    echo json_encode(['error' => $e->getMessage()]); 
+    $pdo = null;
+}
