@@ -9,15 +9,6 @@ if (session_status() === PHP_SESSION_NONE) {
         'httponly' => true,
         'samesite' => 'Lax'
     ]);
-    // Isolasi session file biar ga kehapus GC dari aplikasi lain
-    $sessionPath = __DIR__ . '/../sessions';
-    if (!is_dir($sessionPath)) {
-        @mkdir($sessionPath, 0777, true);
-        @chmod($sessionPath, 0777);
-    }
-    if (is_writable($sessionPath)) {
-        session_save_path($sessionPath);
-    }
     session_start();
 }
 
