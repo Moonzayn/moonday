@@ -1,8 +1,7 @@
 <?php
 // === Task lookup before any output ===
-session_start();
-require_once 'config/database.php';
 require_once 'includes/auth.php';
+require_once 'config/database.php';
 requireLogin();
 
 $taskId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
